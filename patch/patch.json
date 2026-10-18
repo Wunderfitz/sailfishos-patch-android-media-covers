@@ -1,0 +1,9 @@
+{
+    "name": "sailfishos-patch-android-media-covers",
+    "display_name": "Media controls on Android app covers",
+    "version": "0.2.1",
+    "author": "Sebastian Wolf",
+    "category": "homescreen",
+    "description": "Android apps that play media - audiobooks, music, podcasts - get a cover of their own in the app switcher while they have something to play: the artwork, the title and the chapter or artist, and play/pause and next as cover actions (for Audible: back 30 s and play/pause).\n\nIt uses what Android App Support already provides: each Android app's media session appears as the MPRIS player org.mpris.MediaPlayer2.AppSupport.<package>, which the lock screen also shows. Other Android apps and native apps keep their covers as they are.\n\nThe media cover lasts as long as the app keeps its media session: after pausing, an app such as Audible keeps it for a while, then closes it or is suspended by Android; from then on its cover is the usual snapshot of the app again.\n\nWritten with the help of Claude Code, Anthropic's AI coding assistant (Claude Opus 5.5), and tested by the author on a Jolla Phone.",
+    "compatible": [ "5.2.0.20" ]
+}

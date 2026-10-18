@@ -1,0 +1,341 @@
+--- a/usr/share/lipstick-jolla-home-qt5/switcher/SwitcherItem.qml
++++ b/usr/share/lipstick-jolla-home-qt5/switcher/SwitcherItem.qml
+@@ -10,6 +10,7 @@
+ import org.nemomobile.lipstick 0.1
+ import Nemo.Ngf 1.0
+ import com.jolla.coveractions 0.1
++import Amber.Mpris 1.0
+ import Sailfish.Silica 1.0
+ import Sailfish.Silica.Background 1.0
+ import Sailfish.Silica.private 1.0
+@@ -45,6 +46,25 @@
+     property real coverOpacity: hideCover ? 0.0 : (!running ? Theme.opacityHigh : 1.0)
+     readonly property size coverSize: Qt.size(width, height)
+ 
++    // android-media-covers: AppSupport's apkd bridge exposes the media session
++    // of an Android app as the MPRIS service org.mpris.MediaPlayer2.AppSupport.<package>.
++    // While there is one, the cover shows what it plays and offers play/pause and next,
++    // or the actions listed for the app below.
++    readonly property string androidPackage: (launcherItem && launcherItem.readValue("X-apkd-packageName")) || ""
++    readonly property string androidMprisService: androidPackage !== ""
++                                                  ? "org.mpris.MediaPlayer2.AppSupport." + androidPackage
++                                                  : ""
++    // the cover actions of particular apps, left to right: "back30", "playPause", "next"
++    property var androidMediaActionSets: ({
++        "com.audible.application": ["back30", "playPause"]
++    })
++    readonly property QtObject androidPlayer: androidPlayerLoader.item
++    readonly property bool androidMedia: running
++                                         && androidPlayer !== null
++                                         && androidPlayer.currentService === androidMprisService
++                                         && (androidPlayer.playbackStatus !== Mpris.Stopped
++                                             || !!androidPlayer.metaData.title)
++
+     editMode: switcherRoot.housekeeping
+     visible: true
+     opacity: 1.0
+@@ -253,6 +273,165 @@
+         Behavior on opacity { FadeAnimation { duration: 500 } }
+     }
+ 
++    // android-media-covers: one controller per Android app's cover, locked to its service
++    Loader {
++        id: androidPlayerLoader
++
++        active: wrapper.androidMprisService !== ""
++        sourceComponent: Component {
++            MprisController {
++                singleService: true
++                currentService: wrapper.androidMprisService
++            }
++        }
++    }
++
++    // android-media-covers: what the Android app plays, over its window, laid out at the
++    // large cover size and scaled like the launcher icon above
++    Loader {
++        id: androidMediaCover
++
++        anchors.fill: parent
++        opacity: windowPixmap.opacity
++        active: wrapper.androidMedia
++        sourceComponent: Component {
++            Item {
++                // the cover's own background over a solid one, so the window never shows through
++                Rectangle {
++                    anchors.fill: parent
++                    radius: windowPixmap.radius
++                    color: Theme.highlightDimmerColor
++                }
++
++                Backgrounds.CoverBackground {
++                    anchors.fill: parent
++                    radius: windowPixmap.radius
++                }
++
++                Item {
++                    id: androidMediaContent
++
++                    readonly property real contentScale: wrapper.width / Theme.coverSizeLarge.width
++                    readonly property var metaData: wrapper.androidPlayer ? wrapper.androidPlayer.metaData : null
++                    readonly property string artUrl: metaData && metaData.artUrl ? "" + metaData.artUrl : ""
++                    readonly property string title: metaData && metaData.title ? "" + metaData.title : ""
++                    readonly property string subtitle: {
++                        if (!metaData)
++                            return ""
++                        var artists = metaData.contributingArtist
++                        if (artists && typeof artists !== "string" && artists.length !== undefined)
++                            artists = Array.prototype.join.call(artists, ", ")
++                        return artists ? "" + artists : (metaData.albumTitle ? "" + metaData.albumTitle : "")
++                    }
++
++                    readonly property real padding: Theme.paddingMedium + Theme.paddingSmall
++
++                    width: Theme.coverSizeLarge.width
++                    height: wrapper.height / contentScale
++                    anchors.centerIn: parent
++                    scale: contentScale
++
++                    // the artwork takes the full width, the text gets what is left below it
++                    Item {
++                        id: androidArtArea
++
++                        x: androidMediaContent.padding
++                        y: androidMediaContent.padding
++                        width: parent.width - 2 * androidMediaContent.padding
++                        height: width
++
++                        Image {
++                            id: androidArt
++
++                            anchors.fill: parent
++                            sourceSize.width: width
++                            sourceSize.height: height
++                            fillMode: Image.PreserveAspectCrop
++                            asynchronous: true
++                            cache: false
++                            smooth: true
++                            source: androidMediaContent.artUrl
++                            visible: status === Image.Ready
++                        }
++
++                        LauncherIcon {
++                            size: Theme.iconSizeLarge
++                            anchors.centerIn: parent
++                            icon: launcherItem ? launcherItem.iconId : ""
++                            layer.effect: null
++                            visible: !androidArt.visible
++                        }
++                    }
++
++                    FontMetrics {
++                        id: androidMediaFont
++
++                        font.family: Theme.fontFamily
++                        font.pixelSize: Theme.fontSizeExtraSmall
++                    }
++
++                    Item {
++                        id: androidMediaTextArea
++
++                        // the subtitle small, the title larger unless its line no longer fits
++                        // between the artwork and the action row
++                        readonly property int subtitleSize: Theme.fontSizeTiny
++                        readonly property int titleSize: {
++                            var lineRatio = androidMediaFont.height / androidMediaFont.font.pixelSize
++                            var sizes = [Theme.fontSizeSmall, Theme.fontSizeExtraSmall]
++                            for (var i = 0; i < sizes.length; i++) {
++                                var needed = Math.ceil(sizes[i] * lineRatio)
++                                        + Math.ceil(subtitleSize * lineRatio)
++                                        + androidMediaText.spacing
++                                if (needed <= height)
++                                    return sizes[i]
++                            }
++                            return subtitleSize
++                        }
++
++                        anchors {
++                            top: androidArtArea.bottom
++                            topMargin: 0
++                            left: parent.left
++                            right: parent.right
++                            margins: androidMediaContent.padding
++                            bottom: parent.bottom
++                            bottomMargin: loader.height / androidMediaContent.contentScale
++                        }
++
++                        Column {
++                            id: androidMediaText
++
++                            width: parent.width
++                            anchors.verticalCenter: parent.verticalCenter
++                            spacing: Theme.paddingSmall
++
++                            Label {
++                                width: parent.width
++                                text: androidMediaContent.title
++                                visible: text !== ""
++                                color: Theme.primaryColor
++                                font.pixelSize: androidMediaTextArea.titleSize
++                                maximumLineCount: 1
++                                elide: Text.ElideRight
++                            }
++
++                            Label {
++                                width: parent.width
++                                text: androidMediaContent.subtitle
++                                visible: text !== ""
++                                color: Theme.secondaryColor
++                                font.pixelSize: androidMediaTextArea.subtitleSize
++                                maximumLineCount: 1
++                                elide: Text.ElideRight
++                            }
++                        }
++                    }
++                }
++            }
++        }
++    }
++
+     Loader {
+         id: loader
+ 
+@@ -261,7 +440,9 @@
+         anchors.bottom: parent.bottom
+         opacity: windowPixmap.opacity
+ 
+-        sourceComponent: coverActionModel.count > 0 ? coverActionIndicators : undefined
++        sourceComponent: coverActionModel.count > 0
++                         ? coverActionIndicators
++                         : (wrapper.androidMedia ? androidMediaActions : undefined)
+     }
+ 
+     Timer {
+@@ -395,6 +576,127 @@
+                     }
+                 }
+             }
++        }
++    }
++
++    // android-media-covers: the media actions, built like coverActionIndicators above
++    Component {
++        id: androidMediaActions
++
++        Item {
++            id: androidMediaActionRow
++
++            readonly property QtObject player: wrapper.androidPlayer
++            readonly property bool playing: !!player && player.playbackStatus === Mpris.Playing
++            // the app's own actions or play/pause and next, those its player supports
++            readonly property var actions: {
++                var wanted = wrapper.androidMediaActionSets[wrapper.androidPackage] || ["playPause", "next"]
++                var supported = {
++                    "playPause": true,
++                    "next": !!player && player.canGoNext,
++                    "back30": !!player && player.canSeek
++                }
++                var result = []
++                for (var i = 0; i < wanted.length; i++) {
++                    if (supported[wanted[i]])
++                        result.push(wanted[i])
++                }
++                return result
++            }
++            readonly property int count: actions.length
++
++            anchors.fill: parent
++
++            Rectangle {
++                anchors.fill: parent
++                radius: windowPixmap.radius
++
++                gradient: Gradient {
++                    GradientStop { position: 0.0; color: "transparent" }
++                    GradientStop { position: 1.5; color: Theme.highlightDimmerColor }
++                }
++            }
++
++            Grid {
++                id: androidMediaActionGrid
++
++                anchors.fill: parent
++                columns: androidMediaActionRow.count
++
++                Repeater {
++                    model: androidMediaActionRow.count
++                    delegate: MouseArea {
++                        id: androidMediaAction
++
++                        readonly property string action: androidMediaActionRow.actions[index]
++                        readonly property string iconSource: {
++                            if (action === "next")
++                                return "image://theme/icon-cover-next-song"
++                            if (action === "back30")
++                                return "file:///usr/share/sailfishos-patch-android-media-covers/icon-cover-replay-30.svg"
++                            return androidMediaActionRow.playing ? "image://theme/icon-cover-pause"
++                                                                 : "image://theme/icon-cover-play"
++                        }
++
++                        objectName: "SwitcherItem_androidMediaAction"
++
++                        width: androidMediaActionGrid.width / androidMediaActionRow.count
++                        height: androidMediaActionGrid.height
++
++                        enabled: !switcherRoot.housekeeping
++                        propagateComposedEvents: true
++
++                        ColorBackground {
++                            roundedCorners: {
++                                if (androidMediaActionRow.count == 1) {
++                                    return Corners.BottomLeft | Corners.BottomRight
++                                } else if (index == 0) {
++                                    return Corners.BottomLeft
++                                } else {
++                                    return Corners.BottomRight
++                                }
++                            }
++
++                            anchors.fill: parent
++                            visible: androidMediaAction.pressed && androidMediaAction.containsMouse
++                                     && androidMediaAction.enabled
++                            radius: windowPixmap.radius
++                        }
++
++                        HighlightImage {
++                            anchors.centerIn: parent
++                            width: Theme.iconSizeSmall
++                            height: width
++                            sourceSize.width: width
++                            sourceSize.height: width
++                            asynchronous: true
++                            source: androidMediaAction.iconSource
++                            // the ambience's colour, as the theme gives its own icons, also for the file icon
++                            color: Theme.primaryColor
++                            highlighted: androidMediaAction.pressed && androidMediaAction.containsMouse
++                            smooth: true
++                            opacity: switcherRoot.housekeeping ? 0.0 : 1.0
++
++                            Behavior on opacity { FadeAnimation {} }
++                        }
++
++                        onClicked: {
++                            var player = androidMediaActionRow.player
++                            if (!player) {
++                                return
++                            } else if (action === "next") {
++                                player.next()
++                            } else if (action === "back30") {
++                                player.seek(-30000)   // Amber's offset is in ms, MPRIS' in µs
++                            } else if (androidMediaActionRow.playing) {
++                                player.pause()
++                            } else {
++                                player.play()
++                            }
++                        }
++                    }
++                }
++            }
+         }
+     }
+ 
