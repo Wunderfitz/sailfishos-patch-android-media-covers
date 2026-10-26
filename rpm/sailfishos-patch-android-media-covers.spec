@@ -1,6 +1,6 @@
 Name:       sailfishos-patch-android-media-covers
 Summary:    Patchmanager patch: media controls on Android app covers
-Version:    0.2.1
+Version:    0.2.2
 Release:    1
 License:    GPLv3+
 BuildArch:  noarch

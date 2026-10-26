@@ -33,8 +33,8 @@ what is not obvious from the code.
 Registered in the local SDK (`~/SailfishOS/bin/sfdk device list`); keep
 addresses and keys out of this repository.
 
-- **Jolla Phone (2026)**: Sailfish OS 5.2.0.20, `lipstick-jolla-home-qt5`
-  1.27.18.1, Android App Support 15, Patchmanager 3.2.12 (Chum), Audible
+- **Jolla Phone (2026)**: Sailfish OS 5.2.0.22 (since 2026-10-26, before
+  5.2.0.20), `lipstick-jolla-home-qt5` 1.27.18.2, Android App Support 15, Patchmanager 3.2.12 (Chum), Audible
   installed. `sfdk device exec "Jolla Phone (2026)" -- sh -c '...'` runs as
   `defaultuser`; stdin passes through, so `... -- sh -c 'cat > /tmp/x' < file`
   copies a file over. **No root** over SSH (`devel-su` needs the owner's
@@ -107,7 +107,7 @@ addresses and keys out of this repository.
   Airy: `setAmbience` on `com.jolla.ambienced` with the `.ambience` file's URL
   (the emulator's usual one is Ruska).
 - `patch.json` `compatible` lists only the releases actually tested (now
-  5.2.0.20). The RPM requires `patchmanager >= 3.0`, `lipstick-jolla-home-qt5`,
+  5.2.0.20 and 5.2.0.22). The RPM requires `patchmanager >= 3.0`, `lipstick-jolla-home-qt5`,
   `amber-qml-plugin-mpris` and `qt5-qtsvg-plugin-imageformat-svg` (the icon),
   and unapplies the patch in `%pre` (upgrade)
   and `%preun` with `/usr/sbin/patchmanager -u`.
@@ -256,3 +256,11 @@ and applied on the phone by the owner, everything confirmed (2026-10-18):
       VLC, whose cover also drops next with a single file in the playlist
       (`canGoNext` false).
 - [x] The 30 s icon shows properly in light and dark ambiences.
+
+0.2.2 (2026-10-26): compatible with 5.2.0.22, nothing else changed. The
+phone's update brought `lipstick-jolla-home-qt5` 1.27.18.2 with a
+byte-identical `SwitcherItem.qml`, so the diff is the same; Amber MPRIS
+(1.2.10), Patchmanager and Audible's service name are unchanged too. Dry run,
+compile and the live checks pass on 5.2.0.22.
+Installed and applied on the phone by the owner, everything confirmed
+(2026-10-26): runs smoothly, works with Audible and VLC.

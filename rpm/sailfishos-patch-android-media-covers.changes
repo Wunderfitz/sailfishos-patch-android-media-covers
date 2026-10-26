@@ -1,3 +1,6 @@
+* Mon Oct 26 2026 Sebastian Wolf <sebastian@ygriega.de> - 0.2.2-1
+- Compatible with Sailfish OS 5.2.0.22 (the patched file is unchanged there).
+
 * Sun Oct 18 2026 Sebastian Wolf <sebastian@ygriega.de> - 0.2.1-1
 - The back 30 s icon follows the ambience: dark on light ambiences, white on
   dark ones.

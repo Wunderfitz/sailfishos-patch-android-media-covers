@@ -115,7 +115,8 @@ home screen. Removing or upgrading the RPM unapplies the patch first.
 ## Known limits
 
 - Tested against Sailfish OS 5.2.0.20 (`lipstick-jolla-home-qt5`
-  1.27.18.1) and Android App Support 15, with Audible and VLC.
+  1.27.18.1) and 5.2.0.22 (1.27.18.2, `SwitcherItem.qml` unchanged) with
+  Android App Support 15, with Audible and VLC.
 - What next does is the app's choice; it is only offered while the player
   can skip (VLC with a single file has no next).
 - Actions of an app's own beyond MPRIS - such as Audible's 30 s jumps - are
